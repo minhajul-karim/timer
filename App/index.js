@@ -9,7 +9,7 @@ import {
   Dimensions,
   Platform,
 } from 'react-native'
-import { Picker } from '@react-native-community/picker'
+import { Audio } from 'expo-av'
 
 const screen = Dimensions.get('window')
 
@@ -44,7 +44,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 90,
   },
-  pickerContainer: {
+  inputContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
@@ -94,6 +94,8 @@ const generateArray = (number) => {
 export default class App extends Component {
   interval = null
 
+  sound = null
+
   AVAILABLE_MINUTES = generateArray(60)
 
   AVAILABLE_SECONDS = generateArray(60)
@@ -106,11 +108,39 @@ export default class App extends Component {
       selectedMinutes: '00',
       selectedSeconds: '00',
     }
+    this.playSound = this.playSound.bind(this)
+  }
+
+  componentDidMount() {
+    Audio.setAudioModeAsync({
+      allowsRecordingIOS: false,
+      staysActiveInBackground: false,
+      interruptionModeIOS: Audio.INTERRUPTION_MODE_IOS_DO_NOT_MIX,
+      playsInSilentModeIOS: true,
+      shouldDuckAndroid: true,
+      interruptionModeAndroid: Audio.INTERRUPTION_MODE_ANDROID_DO_NOT_MIX,
+      playThroughEarpieceAndroid: false,
+    })
+
+    this.sound = new Audio.Sound()
+
+    const status = {
+      shouldPlay: false,
+    }
+
+    this.sound.loadAsync(
+      require('./assets/sounds/notification.mp3'),
+      status,
+      false
+    )
+    console.log(this.state.selectedSeconds)
   }
 
   componentDidUpdate(prevProps, prevState) {
     if (this.state.remainingSeconds === 0 && prevState.remainingSeconds !== 0) {
       this.stop()
+      console.log('play sound')
+      this.playSound()
     }
   }
 
@@ -121,18 +151,28 @@ export default class App extends Component {
   }
 
   start = () => {
-    this.setState((prevState) => ({
-      remainingSeconds:
-        parseInt(prevState.selectedMinutes, 10) * 60 +
-        parseInt(prevState.selectedSeconds, 10),
-      isTimerRunning: true,
-    }))
-    this.interval = setInterval(() => {
+    // Input validation
+    const IntSelectedMinutes = parseInt(this.state.selectedSeconds, 10)
+    const IntSelectedSeconds = parseInt(this.state.selectedMinutes, 10)
+    if (
+      IntSelectedMinutes >= 0 &&
+      IntSelectedMinutes <= 59 &&
+      IntSelectedSeconds >= 0 &&
+      IntSelectedSeconds <= 59
+    ) {
       this.setState((prevState) => ({
-        remainingSeconds: prevState.remainingSeconds - 1,
+        remainingSeconds:
+          parseInt(prevState.selectedMinutes, 10) * 60 +
+          parseInt(prevState.selectedSeconds, 10),
         isTimerRunning: true,
       }))
-    }, 1000)
+      this.interval = setInterval(() => {
+        this.setState((prevState) => ({
+          remainingSeconds: prevState.remainingSeconds - 1,
+          isTimerRunning: true,
+        }))
+      }, 1000)
+    }
   }
 
   stop = () => {
@@ -144,9 +184,15 @@ export default class App extends Component {
     })
   }
 
+  playSound() {
+    this.sound.setPositionAsync(0).then(() => {
+      this.sound.playAsync()
+    })
+  }
+
   renderPickers = () => {
     return (
-      <View style={styles.pickerContainer}>
+      <View style={styles.inputContainer}>
         <TextInput
           value={this.state.selectedMinutes}
           style={styles.input}
@@ -163,7 +209,10 @@ export default class App extends Component {
           style={styles.input}
           keyboardType="number-pad"
           onChangeText={(value) => {
-            if (value >= 0 && value <= 59)
+            if (
+              value === '' ||
+              (parseInt(value, 10) >= 0 && parseInt(value, 10) <= 59)
+            )
               this.setState({ selectedSeconds: value })
           }}
         />
