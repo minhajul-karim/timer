@@ -8,10 +8,12 @@ import {
   TouchableOpacity,
   Dimensions,
   Platform,
+  Vibration,
 } from 'react-native'
 import { Audio } from 'expo-av'
 
 const screen = Dimensions.get('window')
+const VIBRATION_PATTERN = [1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000]
 
 const styles = StyleSheet.create({
   container: {
@@ -141,6 +143,8 @@ export default class App extends Component {
       this.stop()
       console.log('play sound')
       this.playSound()
+      Vibration.vibrate(VIBRATION_PATTERN, false)
+      //   Vibration.cancel()
     }
   }
 
